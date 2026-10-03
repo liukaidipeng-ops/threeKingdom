@@ -79,7 +79,7 @@ export function isMountain(board: Board, node: number): boolean {
   return board.nodes[node].terrain === 'mountain';
 }
 
-/** 河道（各方本土前方）：魏骑不能一跳越过；吴炮在自家河道（长江）里平移不受阻挡 */
+/** 河道（各方本土前方）：魏骑不能一跳越过；吴炮在自家河道（长江）里平移不受阻挡；吴兵可一步过河 */
 export function isRiver(board: Board, node: number): boolean {
   return board.nodes[node].terrain === 'water';
 }
@@ -236,12 +236,32 @@ export function pieceMoves(board: Board, state: GameState, piece: Piece): number
       const frame = FACTION_FRAME[piece.faction];
       const here = soldierProgress(board, frame, from);
       const inHome = board.nodes[from].home === frame;
-      for (const n of board.neighbors[from]) {
-        if (isMountain(board, n)) continue;
+      // 未过河只能直进。过河后：藤甲兵只进不退（可横走）；魏、吴的普通兵还可以后退
+      const allowed = (n: number, steps: number) => {
         const p = soldierProgress(board, frame, n);
-        // 未过河只能直进。过河后：藤甲兵只进不退（可横走）；魏、吴的普通兵还可以后退
-        const ok = inHome ? p === here + 1 : isRattan(piece) ? p >= here : true;
-        if (ok) pushIfAllowed(state, piece, n, out);
+        return inHome ? p === here + steps : isRattan(piece) ? p >= here : true;
+      };
+      for (const ref of board.nodeLines[from]) {
+        const ids = board.lines[ref.line].nodes;
+        for (const step of [-1, 1]) {
+          const n = ids[ref.index + step];
+          if (n === undefined || isMountain(board, n) || !allowed(n, 1)) continue;
+          pushIfAllowed(state, piece, n, out);
+          // 吴兵通水性：从河岸一步跨过河道到对岸（中间的河道点必须是空的）
+          const far = ids[ref.index + 2 * step];
+          if (
+            piece.faction === 'wu' &&
+            !isRiver(board, from) &&
+            isRiver(board, n) &&
+            state.occ[n] < 0 &&
+            far !== undefined &&
+            !isRiver(board, far) &&
+            !isMountain(board, far) &&
+            allowed(far, 2)
+          ) {
+            pushIfAllowed(state, piece, far, out);
+          }
+        }
       }
       break;
     }

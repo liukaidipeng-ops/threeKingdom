@@ -205,6 +205,57 @@ describe('吴 · 巡河炮', () => {
   });
 });
 
+describe('吴 · 水兵', () => {
+  it('站在自家河岸上可以一步直接过河', () => {
+    const s = emptyState('wu');
+    placeKings(s);
+    const soldier = place(s, 'soldier', 'wu', at('wu', 3, 4));
+    expect(sorted(pieceMoves(board, s, soldier))).toEqual(sorted([at('wu', 3, 5), at('wu', 3, 6)]));
+  });
+
+  it('河道点上有子时不能跨过去', () => {
+    const s = emptyState('wu');
+    placeKings(s);
+    const soldier = place(s, 'soldier', 'wu', at('wu', 3, 4));
+    place(s, 'horse', 'wei', at('wu', 3, 5));
+    expect(pieceMoves(board, s, soldier)).toEqual([at('wu', 3, 5)]); // 只能吃掉河里的马
+  });
+
+  it('到对岸可以吃子，但吃不了藤甲兵', () => {
+    const s = emptyState('wu');
+    placeKings(s);
+    const a = place(s, 'soldier', 'wu', at('wu', 3, 4));
+    place(s, 'horse', 'wei', at('wu', 3, 6));
+    expect(pieceMoves(board, s, a)).toContain(at('wu', 3, 6));
+    const b = place(s, 'soldier', 'wu', at('wu', 5, 4));
+    place(s, 'soldier', 'shu', at('wu', 5, 6));
+    expect(pieceMoves(board, s, b)).not.toContain(at('wu', 5, 6));
+  });
+
+  it('从荆州一步游过别家的河，进入别家本土', () => {
+    const s = emptyState('wu');
+    placeKings(s);
+    const soldier = place(s, 'soldier', 'wu', at('wei', 3, 6));
+    expect(pieceMoves(board, s, soldier)).toContain(at('wei', 3, 4));
+  });
+
+  it('沿着河道横走不算过河', () => {
+    const s = emptyState('wu');
+    placeKings(s);
+    const soldier = place(s, 'soldier', 'wu', at('wu', 3, 5));
+    expect(sorted(pieceMoves(board, s, soldier))).toEqual(
+      sorted([at('wu', 3, 6), at('wu', 2, 5), at('wu', 4, 5), at('wu', 3, 4)]),
+    );
+  });
+
+  it('别家的兵不能一步过河', () => {
+    const s = emptyState('wei');
+    placeKings(s);
+    const soldier = place(s, 'soldier', 'wei', at('wei', 3, 4));
+    expect(pieceMoves(board, s, soldier)).toEqual([at('wei', 3, 5)]);
+  });
+});
+
 describe('兵与藤甲兵', () => {
   it('未过河只能直进', () => {
     const s = emptyState('wu');
