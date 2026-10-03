@@ -72,8 +72,8 @@ export interface Board {
   nodeLines: LineRef[][];
   neighbors: number[][];
   center: number;
-  /** 三条河道上的全部节点 */
-  riverNodes: number[];
+  /** 各方本土前的河道节点（下标为 frame） */
+  rivers: number[][];
   cityNode: Record<CityId, number>;
   idAt(frame: number, f: number, r: number): number;
   tryIdAt(frame: number, f: number, r: number): number | undefined;
@@ -226,7 +226,7 @@ export function buildBoard(): Board {
     nodeLines,
     neighbors: neighborSets.map((s) => [...s]),
     center,
-    riverNodes: nodes.filter((n) => n.region === 'river').map((n) => n.id),
+    rivers: [0, 1, 2].map((p) => nodes.filter((n) => n.region === 'river' && n.aliases[0].frame === p).map((n) => n.id)),
     cityNode,
     idAt,
     tryIdAt,

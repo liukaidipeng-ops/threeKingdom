@@ -159,29 +159,49 @@ describe('魏 · 虎豹骑', () => {
 });
 
 describe('吴 · 巡河炮', () => {
-  it('在河道中可以调到任意一条河道的空位', () => {
+  it('在长江里平移不受棋子阻挡，可到这条河上任意空位', () => {
+    const s = emptyState('wu');
+    placeKings(s);
+    const cannon = place(s, 'cannon', 'wu', at('wu', 2, 5));
+    place(s, 'soldier', 'wu', at('wu', 3, 5));
+    place(s, 'horse', 'wei', at('wu', 4, 5));
+    const moves = pieceMoves(board, s, cannon);
+    expect(moves).toContain(at('wu', 5, 5));
+    expect(moves).toContain(at('wu', 6, 5));
+    expect(moves).not.toContain(at('wu', 3, 5)); // 有子的位置不能落
+  });
+
+  it('吃子仍要隔炮架', () => {
+    const s = emptyState('wu');
+    placeKings(s);
+    const cannon = place(s, 'cannon', 'wu', at('wu', 2, 5));
+    place(s, 'horse', 'wei', at('wu', 4, 5));
+    expect(pieceMoves(board, s, cannon)).not.toContain(at('wu', 4, 5)); // 没有炮架
+    place(s, 'soldier', 'wu', at('wu', 3, 5));
+    expect(pieceMoves(board, s, cannon)).toContain(at('wu', 4, 5)); // 隔着吴兵打
+  });
+
+  it('不能借河道调到别的河', () => {
     const s = emptyState('wu');
     placeKings(s);
     const cannon = place(s, 'cannon', 'wu', at('wu', 3, 5));
-    place(s, 'soldier', 'wei', at('wei', 4, 5));
-    const moves = pieceMoves(board, s, cannon);
-    expect(moves).toContain(at('shu', 2, 5));
-    expect(moves).toContain(at('wei', 6, 5));
-    expect(moves).not.toContain(at('wei', 4, 5)); // 有子的位置不能调（也不能借此吃子）
+    expect(pieceMoves(board, s, cannon)).not.toContain(at('shu', 2, 5));
   });
 
-  it('不在河道里时就是普通的炮', () => {
+  it('在别家的河里就是普通的炮', () => {
     const s = emptyState('wu');
     placeKings(s);
-    const cannon = place(s, 'cannon', 'wu', at('wu', 3, 4));
-    expect(pieceMoves(board, s, cannon)).not.toContain(at('shu', 2, 5));
+    const cannon = place(s, 'cannon', 'wu', at('wei', 2, 5));
+    place(s, 'soldier', 'wei', at('wei', 3, 5));
+    expect(pieceMoves(board, s, cannon)).not.toContain(at('wei', 4, 5));
   });
 
-  it('别家的炮在河道里没有这个本事', () => {
+  it('别家的炮在长江里没有这个本事', () => {
     const s = emptyState('wei');
     placeKings(s);
-    const cannon = place(s, 'cannon', 'wei', at('wei', 3, 5));
-    expect(pieceMoves(board, s, cannon)).not.toContain(at('shu', 2, 5));
+    const cannon = place(s, 'cannon', 'wei', at('wu', 2, 5));
+    place(s, 'soldier', 'wu', at('wu', 3, 5));
+    expect(pieceMoves(board, s, cannon)).not.toContain(at('wu', 4, 5));
   });
 });
 

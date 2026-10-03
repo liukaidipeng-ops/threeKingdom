@@ -79,7 +79,7 @@ export function isMountain(board: Board, node: number): boolean {
   return board.nodes[node].terrain === 'mountain';
 }
 
-/** 河道（各方本土前方）：魏骑不能一跳越过；吴炮可在三条河道之间调动 */
+/** 河道（各方本土前方）：魏骑不能一跳越过；吴炮在自家河道（长江）里平移不受阻挡 */
 export function isRiver(board: Board, node: number): boolean {
   return board.nodes[node].terrain === 'water';
 }
@@ -160,10 +160,13 @@ export function pieceMoves(board: Board, state: GameState, piece: Piece): number
           }
         }
       }
-      // 吴 · 巡河炮：身在河道时，可以（不吃子）调到任意一条河道上的任意空位
-      if (piece.faction === 'wu' && isRiver(board, from)) {
-        for (const n of board.riverNodes) {
-          if (n !== from && state.occ[n] < 0 && !out.includes(n)) out.push(n);
+      // 吴 · 巡河炮：在自家河道（长江）里平移时不受棋子阻挡，可到这条河上任意空位（吃子仍按普通炮）
+      if (piece.faction === 'wu') {
+        const ownRiver = board.rivers[FACTION_FRAME.wu];
+        if (ownRiver.includes(from)) {
+          for (const n of ownRiver) {
+            if (n !== from && state.occ[n] < 0 && !out.includes(n)) out.push(n);
+          }
         }
       }
       break;
