@@ -1,0 +1,19 @@
+{
+  "name": "three-kingdoms-xiangqi",
+  "private": true,
+  "version": "0.1.0",
+  "description": "三国象棋：三人对弈的象棋变体（网页版原型）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
+  }
+}

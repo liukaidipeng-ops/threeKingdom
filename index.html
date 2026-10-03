@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="三国象棋：魏、蜀、吴三人对弈的象棋变体" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23fbf4e2' stroke='%23b5462f' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23b5462f'/%3E%3C/svg%3E"
+    />
+    <title>三国象棋</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>三国象棋 <small>魏 · 蜀 · 吴 三人对弈</small></h1>
+      <div class="topbar-actions">
+        <label>
+          视角
+          <select id="view">
+            <option value="map">地图（北在上）</option>
+            <option value="shu">蜀方在下</option>
+            <option value="wu">吴方在下</option>
+            <option value="wei">魏方在下</option>
+            <option value="follow">跟随当前玩家</option>
+          </select>
+        </label>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="board-wrap">
+        <svg id="board" viewBox="-9.5 -9.5 19 19" role="img" aria-label="三国象棋棋盘"></svg>
+      </section>
+
+      <aside class="panel">
+        <div id="turn" class="card turn"></div>
+
+        <div class="card">
+          <div class="actions">
+            <button id="fire" class="btn btn-fire" type="button">火攻</button>
+            <button id="undo" class="btn" type="button">悔棋</button>
+            <button id="restart" class="btn" type="button">新对局</button>
+          </div>
+          <div id="players" class="players"></div>
+        </div>
+
+        <details class="card" open>
+          <summary>三方特色</summary>
+          <div id="abilities"></div>
+        </details>
+
+        <details class="card">
+          <summary>规则速览</summary>
+          <ul class="rules">
+            <li>走法沿用中国象棋。棋盘三方各有本土（含九宫），中间是荆州与三条边境。</li>
+            <li>直线在中心「折弯」：每方左半边的路通向左邻，右半边通向右邻，中路穿过中心。</li>
+            <li><b>地形</b>：山地只有蜀军能自由通行，水域只有吴军能自由通行。其他势力的车、炮进入山地或水域必须停下，马不能跳进去。炮隔子打不受地形影响。</li>
+            <li><b>吃将制</b>：主公被吃掉的一方出局，残部归降吃将者（带着原有兵种特性）。</li>
+            <li>不能走出让自己主公被吃的棋；无棋可走的一方出局，残部归降上一个行棋者。</li>
+            <li>没有「将帅对脸」的限制。</li>
+            <li><b>荆州霸业</b>：轮到你时，襄阳、江陵、江夏三座城上都站着你的棋子（驻军），直接获胜。</li>
+            <li>棋子走上城池会插上己方旗帜，离开后旗帜仍在，只用于回合上限时计分（每城 3 分）。</li>
+            <li>行棋顺序：蜀 → 吴 → 魏。各走 150 步仍未分胜负时，按子力 + 城池计分。</li>
+          </ul>
+        </details>
+
+        <details class="card" open>
+          <summary>棋谱</summary>
+          <ol id="log" class="log" reversed></ol>
+        </details>
+      </aside>
+    </main>
+
+    <div id="overlay" class="overlay" hidden>
+      <div class="overlay-card">
+        <h2 id="overlay-title"></h2>
+        <p id="overlay-text"></p>
+        <div class="actions">
+          <button id="overlay-restart" class="btn btn-primary" type="button">再来一局</button>
+          <button id="overlay-close" class="btn" type="button">查看棋盘</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/ui/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,480 @@
+:root {
+  --bg: #f4ecd8;
+  --ink: #3b2a1a;
+  --muted: #7a6650;
+  --card: #fffaf0;
+  --card-border: #e2d3b3;
+  --board: #f1dcaa;
+  --board-edge: #c9a96a;
+  --grid: #6b4a2b;
+  --jingzhou: #ecd98f;
+  --river: #e4cc94;
+  --mountain: #c4a27c;
+  --water: #a9d0e8;
+  --piece: #fbf4e2;
+  --accent: #b5462f;
+  --target: #1f7a4d;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Zen Hei', sans-serif;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--card-border);
+  flex-wrap: wrap;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 2px;
+}
+
+.topbar h1 small {
+  font-size: 13px;
+  font-weight: normal;
+  color: var(--muted);
+  letter-spacing: 0;
+  margin-left: 6px;
+}
+
+.topbar select,
+.players select {
+  font: inherit;
+  font-size: 13px;
+  padding: 2px 4px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--ink);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  padding: 12px 16px 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.board-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+#board {
+  width: 100%;
+  max-width: min(100%, calc(100vh - 80px));
+  height: auto;
+  aspect-ratio: 1;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.card summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.turn .who {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.turn .hint {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.turn .alert {
+  margin-top: 6px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-fire {
+  border-color: #e3a07c;
+  color: #a33a14;
+}
+
+.btn-fire.active {
+  background: #a33a14;
+  color: #fff;
+}
+
+.players {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.player {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.player.current {
+  background: #f6ead0;
+}
+
+.player.out {
+  opacity: 0.5;
+}
+
+.player .dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.player .meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 0 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+  background: #fde3dc;
+  color: var(--accent);
+}
+
+.ability {
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.ability h3 {
+  margin: 0 0 2px;
+  font-size: 14px;
+}
+
+.ability ul,
+.rules {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.rules {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.log {
+  margin: 8px 0 0;
+  padding-left: 30px;
+  max-height: 260px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.log li::marker {
+  color: var(--muted);
+}
+
+/* ---------- 棋盘 SVG ---------- */
+
+.face {
+  fill: var(--board);
+  stroke: var(--board);
+  stroke-width: 0.02;
+}
+
+.face-jingzhou {
+  fill: var(--jingzhou);
+  stroke: var(--jingzhou);
+}
+
+.face-mountain {
+  fill: var(--mountain);
+  stroke: var(--mountain);
+}
+
+.face-water {
+  fill: var(--water);
+  stroke: var(--water);
+}
+
+.spot-mountain {
+  fill: var(--mountain);
+  opacity: 0.8;
+}
+
+.spot-water {
+  fill: var(--water);
+  opacity: 0.85;
+}
+
+.river {
+  fill: var(--river);
+  opacity: 0.75;
+}
+
+.grid {
+  fill: none;
+  stroke: var(--grid);
+  stroke-width: 0.035;
+  stroke-linejoin: round;
+}
+
+.palace {
+  fill: none;
+  stroke: var(--grid);
+  stroke-width: 0.03;
+}
+
+.glyph {
+  font-size: 0.32px;
+  text-anchor: middle;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.glyph-water {
+  fill: #2b6e99;
+  font-weight: 700;
+}
+
+.watermark {
+  font-size: 1.6px;
+  text-anchor: middle;
+  fill: #b08a3c;
+  opacity: 0.18;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  pointer-events: none;
+}
+
+.faction-label {
+  font-size: 0.5px;
+  font-weight: 700;
+  text-anchor: middle;
+  letter-spacing: 0.04px;
+}
+
+.frontier-label {
+  font-size: 0.42px;
+  text-anchor: middle;
+  fill: var(--muted);
+  letter-spacing: 0.08px;
+}
+
+.city {
+  fill: #fff6dc;
+  stroke-width: 0.07;
+}
+
+.city-label {
+  font-size: 0.3px;
+  font-weight: 700;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--jingzhou);
+  stroke-width: 0.08px;
+}
+
+.last-move {
+  fill: none;
+  stroke: #d08b2c;
+  stroke-width: 0.05;
+  stroke-dasharray: 0.12 0.08;
+}
+
+.piece-body {
+  fill: var(--piece);
+  stroke-width: 0.045;
+  filter: drop-shadow(0 0.04px 0.03px rgba(60, 40, 10, 0.45));
+}
+
+.piece-ring {
+  fill: none;
+  stroke-width: 0.018;
+  opacity: 0.7;
+}
+
+.piece-text {
+  font-size: 0.36px;
+  font-weight: 700;
+  text-anchor: middle;
+  font-family: 'Kaiti SC', 'STKaiti', 'KaiTi', 'Noto Serif CJK SC', 'WenQuanYi Zen Hei', serif;
+  pointer-events: none;
+}
+
+.piece.selected .piece-body {
+  fill: #fff2b8;
+  stroke-width: 0.075;
+}
+
+.piece.in-check .piece-body {
+  stroke: #e53212 !important;
+  stroke-width: 0.09;
+  animation: pulse 1s ease-in-out infinite alternate;
+}
+
+.piece.burning .piece-body {
+  fill: #ffb08a;
+}
+
+@keyframes pulse {
+  from {
+    fill: var(--piece);
+  }
+  to {
+    fill: #ffd5c8;
+  }
+}
+
+.defector {
+  stroke: #fff;
+  stroke-width: 0.025;
+}
+
+.target {
+  fill: var(--target);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.target-capture {
+  fill: none;
+  stroke: var(--target);
+  stroke-width: 0.06;
+  pointer-events: none;
+}
+
+.target-fire {
+  fill: rgba(230, 80, 20, 0.15);
+  stroke: #e0501a;
+  stroke-width: 0.06;
+  stroke-dasharray: 0.1 0.06;
+  pointer-events: none;
+}
+
+.hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+/* ---------- 结束弹窗 ---------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(40, 28, 12, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.overlay[hidden] {
+  display: none;
+}
+
+.overlay-card {
+  background: var(--card);
+  border-radius: 14px;
+  padding: 24px 28px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+.overlay-card h2 {
+  margin: 0 0 8px;
+}
+
+.overlay-card .actions {
+  justify-content: center;
+  margin-top: 16px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 8px 12px 24px;
+  }
+
+  #board {
+    max-width: 100%;
+  }
+}
