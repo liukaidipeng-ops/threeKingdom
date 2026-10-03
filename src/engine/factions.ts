@@ -115,6 +115,7 @@ export const FACTION_ABILITY: Record<Faction, FactionAbility> = {
 
 /** 不属于某一方的通用规则，显示在特色说明后面 */
 export const COMMON_RULES: string[] = [
+  '兵走到本方河岸（本土最前一线）就可以横走，两边被山挡住的兵可以借此挪到中路过河。',
   '魏、吴的普通兵过河后，除了前进、横走，还可以后退。',
   '三处边境是山，不可通行：棋子不能进入，车、炮的直线和炮弹都被山挡住，马也跳不过去。',
 ];

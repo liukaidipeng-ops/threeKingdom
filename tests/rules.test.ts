@@ -210,7 +210,9 @@ describe('吴 · 水兵', () => {
     const s = emptyState('wu');
     placeKings(s);
     const soldier = place(s, 'soldier', 'wu', at('wu', 3, 4));
-    expect(sorted(pieceMoves(board, s, soldier))).toEqual(sorted([at('wu', 3, 5), at('wu', 3, 6)]));
+    expect(sorted(pieceMoves(board, s, soldier))).toEqual(
+      sorted([at('wu', 3, 5), at('wu', 3, 6), at('wu', 2, 4), at('wu', 4, 4)]),
+    );
   });
 
   it('河道点上有子时不能跨过去', () => {
@@ -218,7 +220,9 @@ describe('吴 · 水兵', () => {
     placeKings(s);
     const soldier = place(s, 'soldier', 'wu', at('wu', 3, 4));
     place(s, 'horse', 'wei', at('wu', 3, 5));
-    expect(pieceMoves(board, s, soldier)).toEqual([at('wu', 3, 5)]); // 只能吃掉河里的马
+    const moves = pieceMoves(board, s, soldier);
+    expect(moves).toContain(at('wu', 3, 5)); // 可以吃掉河里的马
+    expect(moves).not.toContain(at('wu', 3, 6));
   });
 
   it('到对岸可以吃子，但吃不了藤甲兵', () => {
@@ -252,7 +256,7 @@ describe('吴 · 水兵', () => {
     const s = emptyState('wei');
     placeKings(s);
     const soldier = place(s, 'soldier', 'wei', at('wei', 3, 4));
-    expect(pieceMoves(board, s, soldier)).toEqual([at('wei', 3, 5)]);
+    expect(pieceMoves(board, s, soldier)).not.toContain(at('wei', 3, 6));
   });
 });
 
@@ -262,6 +266,33 @@ describe('兵与藤甲兵', () => {
     placeKings(s);
     const soldier = place(s, 'soldier', 'wu', at('wu', 2, 3));
     expect(pieceMoves(board, s, soldier)).toEqual([at('wu', 2, 4)]);
+  });
+
+  it('走到本方河岸就可以横走（不能后退）', () => {
+    const s = emptyState('wei');
+    placeKings(s);
+    const soldier = place(s, 'soldier', 'wei', at('wei', 3, 4));
+    expect(sorted(pieceMoves(board, s, soldier))).toEqual(
+      sorted([at('wei', 3, 5), at('wei', 2, 4), at('wei', 4, 4)]),
+    );
+  });
+
+  it('角落的兵到了河岸前方是山，可以横走挪到中路', () => {
+    const s = emptyState('wei');
+    placeKings(s);
+    const soldier = place(s, 'soldier', 'wei', at('wei', 0, 4));
+    expect(pieceMoves(board, s, soldier)).toEqual([at('wei', 1, 4)]);
+    const s2 = emptyState('shu');
+    placeKings(s2);
+    const rattan = place(s2, 'soldier', 'shu', at('shu', 8, 4));
+    expect(pieceMoves(board, s2, rattan)).toEqual([at('shu', 7, 4)]);
+  });
+
+  it('还没到河岸时只能直进', () => {
+    const s = emptyState('wei');
+    placeKings(s);
+    const soldier = place(s, 'soldier', 'wei', at('wei', 0, 3));
+    expect(pieceMoves(board, s, soldier)).toEqual([at('wei', 0, 4)]);
   });
 
   it('魏、吴的普通兵过河后可进、可横、可退', () => {
