@@ -11,6 +11,8 @@
 
 完整规则见 [docs/RULES.md](docs/RULES.md)。
 
+在线试玩：<https://claude.ai/artifact/9FP7tfrJsF6YVyYgf1jcKG>（页面默认私有，需要在页面的「分享」菜单里开放后，别人才能打开）
+
 ## 运行
 
 需要 Node.js 22.12 或更高版本。
@@ -20,10 +22,11 @@ npm install
 npm run dev      # 本地开发，浏览器打开终端里显示的地址
 npm test         # 规则引擎单元测试
 npm run build    # 类型检查并打包到 dist/（纯静态文件，可直接部署）
+npm run build:artifact   # 打包成单个自包含的 HTML 片段（dist/artifact.html），用于发布到 claude.ai
 ```
 
 右侧面板可以把任意一方切换为「电脑」，一个人也能试玩；三个人可以在同一台电脑或平板上轮流走棋。
-网址加上 `?delay=0` 可以让电脑立即走棋，方便观看电脑对局。
+本地运行时网址加上 `?delay=0` 可以让电脑立即走棋，方便观看电脑对局。手机上可以用棋盘下方的「＋」放大棋盘。
 
 ## 目录
 
@@ -38,6 +41,7 @@ src/ui/       网页界面
   render.ts     SVG 绘制
   main.ts       交互与对局流程
 tests/        单元测试（vitest）
+scripts/      发布用的打包脚本
 docs/         规则文档
 ```
 

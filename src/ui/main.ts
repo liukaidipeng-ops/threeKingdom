@@ -270,6 +270,68 @@ Object.assign(window, {
   },
 });
 
-renderAbilities();
-render();
-scheduleAI();
+// ---------------------------------------------------------------------------
+// 手机上棋盘太小：提供放大（棋盘在自己的容器里横向滚动）
+
+const ZOOM_LEVELS = [1, 1.6, 2.2];
+let zoomIndex = 0;
+function applyZoom() {
+  const wrap = svg.parentElement!;
+  const zoom = ZOOM_LEVELS[zoomIndex];
+  svg.style.width = `${zoom * 100}%`;
+  svg.style.maxWidth = zoom > 1 ? 'none' : '';
+  wrap.classList.toggle('zoomed', zoom > 1);
+  wrap.scrollLeft = (wrap.scrollWidth - wrap.clientWidth) / 2;
+  $('zoom-label').textContent = `${Math.round(zoom * 100)}%`;
+  $<HTMLButtonElement>('zoom-out').disabled = zoomIndex === 0;
+  $<HTMLButtonElement>('zoom-in').disabled = zoomIndex === ZOOM_LEVELS.length - 1;
+}
+$('zoom-in').addEventListener('click', () => {
+  zoomIndex = Math.min(zoomIndex + 1, ZOOM_LEVELS.length - 1);
+  applyZoom();
+});
+$('zoom-out').addEventListener('click', () => {
+  zoomIndex = Math.max(zoomIndex - 1, 0);
+  applyZoom();
+});
+
+// ---------------------------------------------------------------------------
+// 启动。发布为 Artifact 时，页面更新后可以接着下刚才那盘棋。
+
+interface HotData {
+  state?: GameState;
+  history?: GameState[];
+  controllers?: Record<Faction, Controller>;
+  viewMode?: ViewMode;
+}
+interface Hot {
+  data?: HotData;
+  snapshot?: (fn: () => HotData) => void;
+  ready?: (fn: (data: HotData) => void) => void;
+}
+const hot = (window as unknown as { claude?: { hot?: Hot } }).claude?.hot;
+
+function start(data: HotData = {}) {
+  const saved = data.state;
+  if (saved && Array.isArray(saved.pieces) && saved.occ?.length === board.nodes.length) {
+    state = saved;
+    history = data.history ?? [];
+    Object.assign(controllers, data.controllers ?? {});
+    viewMode = data.viewMode ?? 'map';
+    $<HTMLSelectElement>('view').value = viewMode;
+    if (viewMode === 'follow') followRotation = rotationFor(FACTION_FRAME[state.turn]);
+  }
+  renderAbilities();
+  render();
+  applyZoom();
+  scheduleAI();
+}
+
+document.documentElement.lang = 'zh-CN';
+try {
+  hot?.snapshot?.(() => ({ state, history: history.slice(-40), controllers: { ...controllers }, viewMode }));
+} catch {
+  // 不在 Artifact 里时没有 hot，忽略
+}
+if (hot?.ready) hot.ready(start);
+else start(hot?.data ?? {});
