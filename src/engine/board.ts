@@ -4,8 +4,9 @@
  * 每一方有自己的坐标系 frame：f = 0..8 为路（从该方视角的左手边数起），
  * r = 0..7 为线（0 为底线，4 为河岸，7 为与邻国共享的「前沿线」）。
  *
- *   - r 0..4：本土（含九宫），河在 4 与 5 之间
- *   - r 5..6：中立地带
+ *   - r 0..4：本土（含九宫）
+ *   - r 5   ：河道（中间五路为水，两边为山）
+ *   - r 6   ：荆州
  *   - r = 7 ：前沿线。左半边 (f 0..4) 与左邻的右半边重合，右半边与右邻的左半边重合，
  *             三条前沿线交汇于棋盘中心。
  *
@@ -23,6 +24,10 @@ export const CENTER_FILE = 4;
 export const DEPTH = 7;
 /** 本土最后一条线（河岸） */
 export const LAST_HOME_RANK = 4;
+/** 河道所在的线 */
+export const RIVER_RANK = 5;
+/** 边境（山）占两边各两路：f ≤ 1 或 f ≥ 7 */
+const EDGE_FILES = 2;
 /** 城池所在的线 */
 export const CITY_RANK = 6;
 
@@ -67,6 +72,8 @@ export interface Board {
   nodeLines: LineRef[][];
   neighbors: number[][];
   center: number;
+  /** 三条河道上的全部节点 */
+  riverNodes: number[];
   cityNode: Record<CityId, number>;
   idAt(frame: number, f: number, r: number): number;
   tryIdAt(frame: number, f: number, r: number): number | undefined;
@@ -77,22 +84,15 @@ export interface Board {
 
 const edgeKey = (a: number, b: number) => (a < b ? `${a}-${b}` : `${b}-${a}`);
 
-/**
- * 边境地形。每两家之间的边境各有一种地形：
- *   魏—吴：长江（水域）  魏—蜀：秦岭（山地）  吴—蜀：三峡（吴侧与江面为水域，蜀侧为山地）
- */
-function frontierTerrain(a: Faction, b: Faction, side: Faction | null): Terrain {
-  const pair = new Set([a, b]);
-  if (pair.has('wei') && pair.has('wu')) return 'water';
-  if (pair.has('wei') && pair.has('shu')) return 'mountain';
-  return side === 'shu' ? 'mountain' : 'water';
-}
-
+/** 三处边境山脉：魏蜀之间秦岭，魏吴之间大别山，吴蜀之间巫山 */
 export const FRONTIER_NAME: Record<string, string> = {
-  'wei-wu': '长江',
   'shu-wei': '秦岭',
-  'shu-wu': '三峡',
+  'wei-wu': '大别山',
+  'shu-wu': '巫山',
 };
+
+/** 各方本土前的河：魏前汉水，吴前长江，蜀前川江 */
+export const RIVER_NAME: Record<Faction, string> = { wei: '汉水', wu: '长江', shu: '川江' };
 
 export function frontierKey(a: Faction, b: Faction): string {
   return [a, b].sort().join('-');
@@ -207,17 +207,14 @@ export function buildBoard(): Board {
     if (homeAlias) {
       node.region = 'home';
       node.home = homeAlias.frame;
+    } else if (node.aliases.some((a) => a.f < EDGE_FILES || a.f >= FILES - EDGE_FILES)) {
+      node.region = 'frontier';
+      node.terrain = 'mountain';
+    } else if (node.aliases[0].r === RIVER_RANK) {
+      node.region = 'river';
+      node.terrain = 'water';
     } else {
-      const edgeAlias = node.aliases.find((a) => a.f <= 1 || a.f >= FILES - 2);
-      if (edgeAlias) {
-        node.region = 'frontier';
-        const p = edgeAlias.frame;
-        const other = edgeAlias.f <= 1 ? leftOf(p) : rightOf(p);
-        const side = node.aliases.length > 1 ? null : FRAME_FACTION[p];
-        node.terrain = frontierTerrain(FRAME_FACTION[p], FRAME_FACTION[other], side);
-      } else {
-        node.region = 'jingzhou';
-      }
+      node.region = 'jingzhou';
     }
     node.label = makeLabel(node);
   }
@@ -229,6 +226,7 @@ export function buildBoard(): Board {
     nodeLines,
     neighbors: neighborSets.map((s) => [...s]),
     center,
+    riverNodes: nodes.filter((n) => n.region === 'river').map((n) => n.id),
     cityNode,
     idAt,
     tryIdAt,

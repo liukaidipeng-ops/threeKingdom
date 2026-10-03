@@ -69,6 +69,7 @@ export function pieceName(kind: PieceKind, faction: Faction): string {
   if (kind === 'king') return FACTION_RULER[faction];
   if (kind === 'horse' && faction === 'wei') return '虎豹骑';
   if (kind === 'soldier' && faction === 'shu') return '藤甲兵';
+  if (kind === 'cannon' && faction === 'wu') return '巡河炮';
   return PIECE_NAME[kind];
 }
 
@@ -90,30 +91,33 @@ export interface FactionAbility {
 
 export const FACTION_ABILITY: Record<Faction, FactionAbility> = {
   wei: {
-    title: '虎豹骑',
+    title: '虎豹骑（马）',
     lines: [
-      '魏马（骑）在平原（魏本土、荆州）上不受蹩马腿限制。',
-      '劣势：通往蜀、吴的边境都是山地或水域，铁骑难以通过。',
+      '魏马（骑）不受蹩马腿限制。',
+      '但不能一跳越过河道：必须先落进河里，下一步再上岸。',
     ],
   },
   shu: {
-    title: '藤甲兵 · 蜀道',
+    title: '藤甲兵（兵）',
     lines: [
-      '蜀兵（藤）刀枪不入：不能被炮吃掉。',
-      '蜀军所有棋子在山地中通行无阻。',
-      '劣势：藤甲怕火，会被吴军火攻连片烧毁。',
+      '蜀兵（藤）刀枪不入：不能被兵吃掉（车、马、炮等其他棋子照常可以吃）。',
+      '藤甲沉重，只进不退：过河后可前进、横走，不能后退。',
     ],
   },
   wu: {
-    title: '水军 · 火攻',
+    title: '巡河炮（炮）',
     lines: [
-      '吴军所有棋子在水域中通行无阻。',
-      '火攻（全局限 2 次，代替一步棋）：烧掉一枚与吴军棋子相邻的敌子（主公除外）；烧到藤甲兵时，相连的藤甲兵一起烧掉。',
+      '吴炮在河道中时，可以一步调到任意一条河道上的任意空位（三条河水路相通），这种调动不能吃子。',
+      '其余走法与普通炮相同。',
     ],
   },
 };
 
-export const FIRE_ATTACK_USES = 2;
+/** 不属于某一方的通用规则，显示在特色说明后面 */
+export const COMMON_RULES: string[] = [
+  '魏、吴的普通兵过河后，除了前进、横走，还可以后退。',
+  '三处边境是山，不可通行：棋子不能进入，车、炮的直线和炮弹都被山挡住，马也跳不过去。',
+];
 
 /** 回合上限（按单步计）：三方各走 150 步 */
 export const MAX_PLY = 450;

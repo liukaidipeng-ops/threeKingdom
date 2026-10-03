@@ -4,6 +4,7 @@ import { getBoard } from '../engine/board';
 import {
   CITY_IDS,
   CITY_SCORE,
+  COMMON_RULES,
   FACTION_ABILITY,
   FACTION_COLOR,
   FACTION_FRAME,
@@ -15,7 +16,6 @@ import {
   applyAction,
   citiesOwned,
   computeScores,
-  fireVictims,
   garrisonedCities,
   inCheck,
   initialState,
@@ -39,8 +39,6 @@ const controllers: Record<Faction, Controller> = { shu: 'human', wu: 'human', we
 let viewMode: ViewMode = 'map';
 let followRotation = 0;
 let selected: number | null = null;
-let fireMode = false;
-let burnPreview: number[] = [];
 let aiToken = 0;
 let overlayDismissed = false;
 
@@ -77,10 +75,6 @@ function moveTargets(): number[] {
   return legal().flatMap((a) => (a.type === 'move' && a.from === selected ? [a.to] : []));
 }
 
-function fireTargets(): number[] {
-  return legal().flatMap((a) => (a.type === 'fire' ? [a.target] : []));
-}
-
 // ---------------------------------------------------------------------------
 // 渲染
 
@@ -91,8 +85,6 @@ function render() {
     renderDynamic(board, layout, state, {
       selected,
       moveTargets: isHumanTurn() ? moveTargets() : [],
-      fireTargets: fireMode && isHumanTurn() ? fireTargets() : [],
-      burnPreview,
     });
   renderPanel();
 }
@@ -116,7 +108,6 @@ function renderPanel() {
     const me = state.turn;
     let hint: string;
     if (!isHumanTurn()) hint = '电脑思考中…';
-    else if (fireMode) hint = '火攻：点击虚线圈出的敌子（Esc 取消）';
     else if (selected !== null) hint = '点击绿色标记的位置走子';
     else hint = '点击己方棋子';
     const alert = inCheck(board, state, me) ? '<div class="alert">主公被将军！</div>' : '';
@@ -144,12 +135,6 @@ function renderPanel() {
     </div>`;
   }).join('');
 
-  const fireBtn = $<HTMLButtonElement>('fire');
-  const ownsWu = state.pieces.some((p) => p && p.faction === 'wu' && p.owner === state.turn);
-  fireBtn.hidden = !ownsWu || state.fireUses <= 0;
-  fireBtn.textContent = fireMode ? '取消火攻' : `火攻（剩 ${state.fireUses} 次）`;
-  fireBtn.classList.toggle('active', fireMode);
-  fireBtn.disabled = !isHumanTurn() || fireTargets().length === 0;
   $<HTMLButtonElement>('undo').disabled = history.length === 0;
 
   $('log').innerHTML = state.log
@@ -171,12 +156,12 @@ function renderPanel() {
 }
 
 function renderAbilities() {
-  $('abilities').innerHTML = TURN_ORDER.map((f) => {
-    const a = FACTION_ABILITY[f];
-    return `<div class="ability"><h3 style="color:${FACTION_COLOR[f]}">${FACTION_NAME[f]} · ${a.title}</h3><ul>${a.lines
-      .map((l) => `<li>${l}</li>`)
-      .join('')}</ul></div>`;
-  }).join('');
+  const list = (lines: string[]) => `<ul>${lines.map((l) => `<li>${l}</li>`).join('')}</ul>`;
+  $('abilities').innerHTML =
+    TURN_ORDER.map((f) => {
+      const a = FACTION_ABILITY[f];
+      return `<div class="ability"><h3 style="color:${FACTION_COLOR[f]}">${FACTION_NAME[f]} · ${a.title}</h3>${list(a.lines)}</div>`;
+    }).join('') + `<div class="ability"><h3>通用</h3>${list(COMMON_RULES)}</div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,8 +171,6 @@ function commit(action: Action) {
   history.push(state);
   state = applyAction(board, state, action);
   selected = null;
-  fireMode = false;
-  burnPreview = [];
   if (viewMode === 'follow' && controllers[state.turn] === 'human') {
     followRotation = rotationFor(FACTION_FRAME[state.turn]);
   }
@@ -207,15 +190,6 @@ function scheduleAI() {
 
 function onNodeClick(node: number) {
   if (!isHumanTurn()) return;
-  if (fireMode) {
-    if (fireTargets().includes(node)) commit({ type: 'fire', target: node });
-    else {
-      fireMode = false;
-      burnPreview = [];
-      render();
-    }
-    return;
-  }
   if (selected !== null && moveTargets().includes(node)) {
     commit({ type: 'move', from: selected, to: node });
     return;
@@ -231,25 +205,6 @@ svg.addEventListener('click', (e) => {
   if (hit) onNodeClick(Number(hit.getAttribute('data-node')));
 });
 
-svg.addEventListener('mouseover', (e) => {
-  if (!fireMode) return;
-  const hit = (e.target as Element).closest('[data-node]');
-  const node = hit ? Number(hit.getAttribute('data-node')) : -1;
-  const next = fireTargets().includes(node) ? fireVictims(board, state, node, state.turn) : [];
-  if (next.join() !== burnPreview.join()) {
-    burnPreview = next;
-    render();
-  }
-});
-
-$('fire').addEventListener('click', () => {
-  if (!isHumanTurn()) return;
-  fireMode = !fireMode;
-  selected = null;
-  burnPreview = [];
-  render();
-});
-
 $('undo').addEventListener('click', () => {
   if (history.length === 0) return;
   aiToken++;
@@ -257,8 +212,6 @@ $('undo').addEventListener('click', () => {
     state = history.pop()!;
   } while (history.length > 0 && controllers[state.turn] !== 'human');
   selected = null;
-  fireMode = false;
-  burnPreview = [];
   overlayDismissed = false;
   render();
   scheduleAI();
@@ -269,8 +222,6 @@ function restart() {
   state = initialState(board);
   history = [];
   selected = null;
-  fireMode = false;
-  burnPreview = [];
   overlayDismissed = false;
   followRotation = viewMode === 'follow' ? rotationFor(FACTION_FRAME[state.turn]) : 0;
   render();
@@ -290,7 +241,6 @@ $('players').addEventListener('change', (e) => {
   if (!faction) return;
   controllers[faction] = select.value as Controller;
   selected = null;
-  fireMode = false;
   render();
   scheduleAI();
 });
@@ -302,10 +252,8 @@ $<HTMLSelectElement>('view').addEventListener('change', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && (selected !== null || fireMode)) {
+  if (e.key === 'Escape' && selected !== null) {
     selected = null;
-    fireMode = false;
-    burnPreview = [];
     render();
   }
 });

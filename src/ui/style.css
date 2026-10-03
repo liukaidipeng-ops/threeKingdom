@@ -8,7 +8,6 @@
   --board-edge: #c9a96a;
   --grid: #6b4a2b;
   --jingzhou: #ecd98f;
-  --river: #e4cc94;
   --mountain: #c4a27c;
   --water: #a9d0e8;
   --piece: #fbf4e2;
@@ -158,16 +157,6 @@ body {
   color: #fff;
 }
 
-.btn-fire {
-  border-color: #e3a07c;
-  color: #a33a14;
-}
-
-.btn-fire.active {
-  background: #a33a14;
-  color: #fff;
-}
-
 .players {
   margin-top: 10px;
   display: flex;
@@ -278,14 +267,25 @@ body {
   opacity: 0.8;
 }
 
-.spot-water {
+.river {
   fill: var(--water);
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
-.river {
-  fill: var(--river);
-  opacity: 0.75;
+.river-label {
+  font-size: 0.26px;
+  text-anchor: middle;
+  fill: #2b6e99;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.grid-blocked {
+  fill: none;
+  stroke: var(--grid);
+  stroke-width: 0.025;
+  stroke-dasharray: 0.08 0.08;
+  opacity: 0.45;
 }
 
 .grid {
@@ -306,11 +306,6 @@ body {
   text-anchor: middle;
   opacity: 0.55;
   pointer-events: none;
-}
-
-.glyph-water {
-  fill: #2b6e99;
-  font-weight: 700;
 }
 
 .watermark {
@@ -389,10 +384,6 @@ body {
   animation: pulse 1s ease-in-out infinite alternate;
 }
 
-.piece.burning .piece-body {
-  fill: #ffb08a;
-}
-
 @keyframes pulse {
   from {
     fill: var(--piece);
@@ -417,14 +408,6 @@ body {
   fill: none;
   stroke: var(--target);
   stroke-width: 0.06;
-  pointer-events: none;
-}
-
-.target-fire {
-  fill: rgba(230, 80, 20, 0.15);
-  stroke: #e0501a;
-  stroke-width: 0.06;
-  stroke-dasharray: 0.1 0.06;
   pointer-events: none;
 }
 

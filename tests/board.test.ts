@@ -69,22 +69,23 @@ describe('棋盘拓扑', () => {
 describe('区域与地形', () => {
   const count = (pred: (n: (typeof board.nodes)[number]) => boolean) => board.nodes.filter(pred).length;
 
-  it('本土 3×45，边境 30，其余为荆州', () => {
+  it('本土 3×45，三处边境山 30，三条河道 15，荆州 22', () => {
     expect(count((n) => n.region === 'home')).toBe(3 * 45);
     expect(count((n) => n.region === 'frontier')).toBe(30);
-    expect(count((n) => n.region === 'jingzhou')).toBe(board.nodes.length - 135 - 30);
+    expect(count((n) => n.region === 'river')).toBe(15);
+    expect(count((n) => n.region === 'jingzhou')).toBe(22);
   });
 
-  it('魏蜀之间是山地，魏吴之间是水域，吴蜀之间蜀侧为山、吴侧与江面为水', () => {
+  it('边境全是山，河道全是水，其余都是平地', () => {
+    for (const n of board.nodes) {
+      const expected = n.region === 'frontier' ? 'mountain' : n.region === 'river' ? 'water' : 'plain';
+      expect(n.terrain).toBe(expected);
+    }
     expect(board.nodes[at('wei', 8, 5)].terrain).toBe('mountain');
-    expect(board.nodes[at('shu', 0, 6)].terrain).toBe('mountain');
-    expect(board.nodes[at('wei', 0, 5)].terrain).toBe('water');
-    expect(board.nodes[at('wu', 8, 6)].terrain).toBe('water');
-    expect(board.nodes[at('shu', 7, 5)].terrain).toBe('mountain');
-    expect(board.nodes[at('wu', 1, 5)].terrain).toBe('water');
-    expect(board.nodes[at('wu', 0, DEPTH)].terrain).toBe('water');
-    expect(count((n) => n.terrain === 'mountain')).toBe(14);
-    expect(count((n) => n.terrain === 'water')).toBe(16);
+    expect(board.nodes[at('wei', 0, DEPTH)].terrain).toBe('mountain');
+    expect(board.nodes[at('wu', 2, 5)].terrain).toBe('water');
+    expect(board.nodes[at('wu', 6, 5)].terrain).toBe('water');
+    expect(board.nodes[at('wu', 2, 6)].region).toBe('jingzhou');
   });
 
   it('三座城都在荆州，各自靠近一方', () => {

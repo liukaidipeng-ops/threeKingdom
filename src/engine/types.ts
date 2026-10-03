@@ -9,11 +9,11 @@ export type PieceKind =
   | 'cannon'
   | 'soldier';
 
-/** 地形：平地 / 山地 / 水域 */
+/** 地形：平地 / 山（不可通行） / 河道 */
 export type Terrain = 'plain' | 'mountain' | 'water';
 
-/** 区域：本土 / 荆州（中央） / 边境 */
-export type Region = 'home' | 'jingzhou' | 'frontier';
+/** 区域：本土 / 河道（各方本土前方） / 荆州（中央） / 边境（山） */
+export type Region = 'home' | 'river' | 'jingzhou' | 'frontier';
 
 export type CityId = 'xiangyang' | 'jiangling' | 'jiangxia';
 
@@ -27,9 +27,12 @@ export interface Piece {
   node: number;
 }
 
-export type Action =
-  | { type: 'move'; from: number; to: number }
-  | { type: 'fire'; target: number };
+/** 一步棋。保留 type 字段，方便以后加入计策等其他行动。 */
+export interface Action {
+  type: 'move';
+  from: number;
+  to: number;
+}
 
 export type EndReason = 'last-standing' | 'cities' | 'move-limit';
 
@@ -62,8 +65,6 @@ export interface GameState {
   /** 仍在场上的势力 */
   alive: Faction[];
   cities: Record<CityId, Faction | null>;
-  /** 东吴「火攻」剩余次数（归属于吴军，降军亦可使用） */
-  fireUses: number;
   ply: number;
   lastMover: Faction | null;
   lastAction: Action | null;

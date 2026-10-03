@@ -23,7 +23,7 @@ function evaluate(board: Board, s: GameState, me: Faction): number {
     const node = board.nodes[p.node];
     if (p.kind === 'soldier' && node.home !== null && node.home !== FACTION_FRAME[p.faction]) v += 0.6;
     else if (p.kind === 'soldier' && node.home === null) v += 0.4;
-    if (node.region === 'jingzhou' && p.kind !== 'king') v += 0.15;
+    if ((node.region === 'jingzhou' || node.region === 'river') && p.kind !== 'king') v += 0.15;
     score += p.owner === me ? v : -0.5 * v;
   }
   for (const c of CITY_IDS) {
@@ -83,7 +83,6 @@ export function chooseAction(board: Board, state: GameState, random: () => numbe
     const next = simulate(board, state, action);
     let score = evaluate(board, next, me) - base;
     score -= 0.85 * worstThreat(board, next, me);
-    if (action.type === 'fire') score -= 1.5; // 火攻次数宝贵，没有明显收益时不乱用
     score += random() * 0.3;
     if (score > bestScore) {
       bestScore = score;

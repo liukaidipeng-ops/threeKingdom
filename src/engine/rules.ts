@@ -5,7 +5,6 @@ import {
   CITY_SCORE,
   FACTION_FRAME,
   FACTION_NAME,
-  FIRE_ATTACK_USES,
   FRAME_FACTION,
   MAX_PLY,
   PIECE_VALUE,
@@ -51,7 +50,6 @@ export function initialState(board: Board): GameState {
     turn: TURN_ORDER[0],
     alive: [...TURN_ORDER],
     cities: { xiangyang: null, jiangling: null, jiangxia: null },
-    fireUses: FIRE_ATTACK_USES,
     ply: 0,
     lastMover: null,
     lastAction: null,
@@ -76,28 +74,26 @@ export function cloneState(s: GameState): GameState {
 // ---------------------------------------------------------------------------
 // 地形与兵种特性
 
-/** 山地只有蜀军能自由通行，水域只有吴军能自由通行 */
-export function terrainRestricts(board: Board, piece: Piece, node: number): boolean {
-  const t = board.nodes[node].terrain;
-  if (t === 'mountain') return piece.faction !== 'shu';
-  if (t === 'water') return piece.faction !== 'wu';
-  return false;
+/** 山（三处边境）不可通行：不能进入，直线、炮弹、马腿都被山挡住 */
+export function isMountain(board: Board, node: number): boolean {
+  return board.nodes[node].terrain === 'mountain';
 }
 
-/** 平原：魏本土与荆州。魏马（虎豹骑）在平原上不受蹩马腿限制。 */
-export function isPlain(board: Board, node: number): boolean {
-  const n = board.nodes[node];
-  return n.region === 'jingzhou' || n.home === FACTION_FRAME.wei;
+/** 河道（各方本土前方）：魏骑不能一跳越过；吴炮可在三条河道之间调动 */
+export function isRiver(board: Board, node: number): boolean {
+  return board.nodes[node].terrain === 'water';
 }
+
+const isRattan = (p: Piece) => p.kind === 'soldier' && p.faction === 'shu';
 
 export function canCapture(attacker: Piece, target: Piece): boolean {
   if (target.owner === attacker.owner) return false;
-  // 藤甲兵刀枪不入：炮打不动
-  if (attacker.kind === 'cannon' && target.kind === 'soldier' && target.faction === 'shu') return false;
+  // 藤甲兵：兵吃不动，其他棋子照常可以吃
+  if (isRattan(target) && attacker.kind === 'soldier') return false;
   return true;
 }
 
-/** 兵的「前进度」：在本方坐标系里就是线号，在别家的地盘里是 2×DEPTH − 该家线号。不能走向更小的值（不能后退）。 */
+/** 兵的「前进度」：在本方坐标系里就是线号，在别家的地盘里是 2×DEPTH − 该家线号。数值变小即为后退。 */
 export function soldierProgress(board: Board, frame: number, node: number): number {
   const c = board.coord(node, frame);
   if (c) return c.r;
@@ -127,13 +123,13 @@ export function pieceMoves(board: Board, state: GameState, piece: Piece): number
         for (const step of [-1, 1]) {
           for (let i = ref.index + step; i >= 0 && i < ids.length; i += step) {
             const n = ids[i];
+            if (isMountain(board, n)) break;
             const target = pieceAt(state, n);
             if (target) {
               if (canCapture(piece, target)) out.push(n);
               break;
             }
             out.push(n);
-            if (terrainRestricts(board, piece, n)) break;
           }
         }
       }
@@ -143,16 +139,16 @@ export function pieceMoves(board: Board, state: GameState, piece: Piece): number
       for (const ref of board.nodeLines[from]) {
         const ids = board.lines[ref.line].nodes;
         for (const step of [-1, 1]) {
-          // 平移：和车一样，进入受限地形要停下
+          // 平移：和车一样
           for (let i = ref.index + step; i >= 0 && i < ids.length; i += step) {
             const n = ids[i];
-            if (state.occ[n] >= 0) break;
+            if (isMountain(board, n) || state.occ[n] >= 0) break;
             out.push(n);
-            if (terrainRestricts(board, piece, n)) break;
           }
-          // 隔子打：炮弹飞越地形，只看炮架
+          // 隔子打：炮弹也飞不过山
           let screened = false;
           for (let i = ref.index + step; i >= 0 && i < ids.length; i += step) {
+            if (isMountain(board, ids[i])) break;
             const target = pieceAt(state, ids[i]);
             if (!target) continue;
             if (!screened) {
@@ -162,6 +158,12 @@ export function pieceMoves(board: Board, state: GameState, piece: Piece): number
             if (canCapture(piece, target)) out.push(ids[i]);
             break;
           }
+        }
+      }
+      // 吴 · 巡河炮：身在河道时，可以（不吃子）调到任意一条河道上的任意空位
+      if (piece.faction === 'wu' && isRiver(board, from)) {
+        for (const n of board.riverNodes) {
+          if (n !== from && state.occ[n] < 0 && !out.includes(n)) out.push(n);
         }
       }
       break;
@@ -175,14 +177,19 @@ export function pieceMoves(board: Board, state: GameState, piece: Piece): number
           const beyondIdx = legIdx + step;
           if (beyondIdx < 0 || beyondIdx >= ids.length) continue;
           const leg = ids[legIdx];
-          const ignoreLeg = piece.faction === 'wei' && isPlain(board, leg);
-          if (state.occ[leg] >= 0 && !ignoreLeg) continue;
+          if (isMountain(board, leg)) continue;
+          if (piece.faction === 'wei') {
+            // 魏 · 虎豹骑：不怕蹩马腿，但不能一跳越过河道，必须先落进河里
+            if (isRiver(board, leg) && !isRiver(board, from)) continue;
+          } else if (state.occ[leg] >= 0) {
+            continue;
+          }
           // 「日」字：先沿直线走一步到马腿，再走到马腿前方那条边两侧格子的对角
           for (const face of board.facesOnEdge(leg, ids[beyondIdx])) {
             const dest = face[(face.indexOf(leg) + 2) % 4];
             if (seen.has(dest)) continue;
             seen.add(dest);
-            if (terrainRestricts(board, piece, dest)) continue; // 骑兵不能上山下水
+            if (isMountain(board, dest)) continue;
             pushIfAllowed(state, piece, dest, out);
           }
         }
@@ -227,9 +234,11 @@ export function pieceMoves(board: Board, state: GameState, piece: Piece): number
       const here = soldierProgress(board, frame, from);
       const inHome = board.nodes[from].home === frame;
       for (const n of board.neighbors[from]) {
+        if (isMountain(board, n)) continue;
         const p = soldierProgress(board, frame, n);
-        // 未过河只能直进；过河后可以前进或横走，不能后退
-        if (inHome ? p === here + 1 : p >= here) pushIfAllowed(state, piece, n, out);
+        // 未过河只能直进。过河后：藤甲兵只进不退（可横走）；魏、吴的普通兵还可以后退
+        const ok = inHome ? p === here + 1 : isRattan(piece) ? p >= here : true;
+        if (ok) pushIfAllowed(state, piece, n, out);
       }
       break;
     }
@@ -262,42 +271,6 @@ export function inCheck(board: Board, state: GameState, faction: Faction): boole
 }
 
 // ---------------------------------------------------------------------------
-// 火攻
-
-/** 火攻会烧掉的棋子所在节点：目标本身，若是藤甲兵则连带相连的敌方藤甲兵 */
-export function fireVictims(board: Board, state: GameState, target: number, by: Faction): number[] {
-  const t = pieceAt(state, target);
-  if (!t) return [];
-  if (!(t.kind === 'soldier' && t.faction === 'shu')) return [target];
-  const burned = new Set([target]);
-  const queue = [target];
-  while (queue.length) {
-    const n = queue.shift()!;
-    for (const nb of board.neighbors[n]) {
-      const q = pieceAt(state, nb);
-      if (q && q.kind === 'soldier' && q.faction === 'shu' && q.owner !== by && !burned.has(nb)) {
-        burned.add(nb);
-        queue.push(nb);
-      }
-    }
-  }
-  return [...burned];
-}
-
-export function fireTargets(board: Board, state: GameState, by: Faction): number[] {
-  if (state.fireUses <= 0) return [];
-  const targets = new Set<number>();
-  for (const p of state.pieces) {
-    if (!p || p.owner !== by || p.faction !== 'wu') continue;
-    for (const nb of board.neighbors[p.node]) {
-      const t = pieceAt(state, nb);
-      if (t && t.owner !== by && t.kind !== 'king') targets.add(nb);
-    }
-  }
-  return [...targets];
-}
-
-// ---------------------------------------------------------------------------
 // 执行
 
 function removePiece(state: GameState, node: number): Piece | null {
@@ -313,19 +286,14 @@ function removePiece(state: GameState, node: number): Piece | null {
 export function simulate(board: Board, state: GameState, action: Action): GameState {
   const s = cloneState(state);
   const me = s.turn;
-  if (action.type === 'move') {
-    const moverId = s.occ[action.from];
-    const captured = removePiece(s, action.to);
-    s.occ[action.from] = -1;
-    s.occ[action.to] = moverId;
-    s.pieces[moverId]!.node = action.to;
-    if (captured?.kind === 'king') eliminate(s, captured.owner, me, 'king-captured');
-    const city = board.nodes[action.to].city;
-    if (city) s.cities[city] = me;
-  } else {
-    for (const n of fireVictims(board, s, action.target, me)) removePiece(s, n);
-    s.fireUses -= 1;
-  }
+  const moverId = s.occ[action.from];
+  const captured = removePiece(s, action.to);
+  s.occ[action.from] = -1;
+  s.occ[action.to] = moverId;
+  s.pieces[moverId]!.node = action.to;
+  if (captured?.kind === 'king') eliminate(s, captured.owner, me, 'king-captured');
+  const city = board.nodes[action.to].city;
+  if (city) s.cities[city] = me;
   return s;
 }
 
@@ -355,28 +323,15 @@ export function legalActions(board: Board, state: GameState, faction: Faction = 
       if (!inCheck(board, simulate(board, state, action), faction)) actions.push(action);
     }
   }
-  for (const target of fireTargets(board, state, faction)) {
-    const action: Action = { type: 'fire', target };
-    if (!inCheck(board, simulate(board, state, action), faction)) actions.push(action);
-  }
   return actions;
 }
 
 export function isLegal(board: Board, state: GameState, action: Action): boolean {
-  return legalActions(board, state).some((a) =>
-    a.type === 'move' && action.type === 'move'
-      ? a.from === action.from && a.to === action.to
-      : a.type === 'fire' && action.type === 'fire' && a.target === action.target,
-  );
+  return legalActions(board, state).some((a) => a.from === action.from && a.to === action.to);
 }
 
 function describe(board: Board, state: GameState, action: Action): string {
   const me = state.turn;
-  if (action.type === 'fire') {
-    const victims = fireVictims(board, state, action.target, me).map((n) => pieceAt(state, n)!);
-    const names = victims.map((v) => `${FACTION_NAME[v.owner]}${pieceName(v.kind, v.faction)}`);
-    return `火攻 ${board.nodes[action.target].label}，烧毁 ${names.join('、')}`;
-  }
   const mover = pieceAt(state, action.from)!;
   const target = pieceAt(state, action.to);
   let text = `${pieceName(mover.kind, mover.faction)} ${board.nodes[action.from].label}→${board.nodes[action.to].label}`;

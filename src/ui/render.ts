@@ -1,4 +1,13 @@
-import { CENTER_FILE, DEPTH, FILES, FRONTIER_NAME, frontierKey, leftOf, type Board } from '../engine/board';
+import {
+  CENTER_FILE,
+  DEPTH,
+  FRONTIER_NAME,
+  RIVER_NAME,
+  RIVER_RANK,
+  frontierKey,
+  leftOf,
+  type Board,
+} from '../engine/board';
 import {
   CITY_IDS,
   CITY_NAME,
@@ -17,9 +26,6 @@ export const PIECE_R = 0.32;
 export interface Highlights {
   selected: number | null;
   moveTargets: number[];
-  fireTargets: number[];
-  /** 鼠标悬停在火攻目标上时，将被一并烧掉的节点 */
-  burnPreview: number[];
 }
 
 const f3 = (n: number) => n.toFixed(3);
@@ -42,39 +48,44 @@ export function renderStatic(board: Board, layout: Layout): string {
     out.push(poly(layout.face(face), cls));
   }
 
-  // 河界
+  // 河道：本土前方中间五路
+  const lo = RIVER_RANK - 0.42;
+  const hi = RIVER_RANK + 0.42;
   for (let p = 0; p < 3; p++) {
-    const bank: [number, number][] = [
-      [0, 4],
-      [FILES - 1, 4],
-      [FILES - 1, 5],
-      [0, 5],
+    const band: [number, number][] = [
+      [1.55, lo],
+      [6.45, lo],
+      [6.45, hi],
+      [1.55, hi],
     ];
-    out.push(poly(layout.polyline(p, bank, 12), 'river'));
+    out.push(poly(layout.polyline(p, band, 12), 'river'));
   }
 
-  // 地形中的点：山/水的柔和底色（裁剪在棋盘范围内）
+  // 山：柔和的底色（裁剪在棋盘范围内）
   const outline = board.faces.map((face) => `<path d="${pathData(layout.face(face), true)}"/>`).join('');
   out.push(`<clipPath id="board-clip">${outline}</clipPath><g clip-path="url(#board-clip)">`);
   for (const node of board.nodes) {
-    if (node.terrain === 'plain') continue;
+    if (node.terrain !== 'mountain') continue;
     const p = layout.pos[node.id];
-    out.push(`<circle class="spot-${node.terrain}" cx="${f3(p.x)}" cy="${f3(p.y)}" r="0.42"/>`);
+    out.push(`<circle class="spot-mountain" cx="${f3(p.x)}" cy="${f3(p.y)}" r="0.42"/>`);
   }
   out.push('</g>');
 
   // 荆州水印
   out.push(`<text class="watermark" x="0" y="0.35">荆州</text>`);
 
-  // 网格线
+  // 网格线：通向山里的线段画成虚线（不可通行）
+  const mountain = (id: number) => board.nodes[id].terrain === 'mountain';
+  const open: string[] = [];
+  const blocked: string[] = [];
   for (const line of board.lines) {
-    const pts: Point[] = [];
     for (let i = 0; i < line.nodes.length - 1; i++) {
-      const seg = layout.segment(line.nodes[i], line.nodes[i + 1]);
-      pts.push(...(i === 0 ? seg : seg.slice(1)));
+      const [a, b] = [line.nodes[i], line.nodes[i + 1]];
+      (mountain(a) || mountain(b) ? blocked : open).push(pathData(layout.segment(a, b)));
     }
-    out.push(`<path class="grid" d="${pathData(pts)}"/>`);
   }
+  out.push(`<path class="grid-blocked" d="${blocked.join('')}"/>`);
+  out.push(`<path class="grid" d="${open.join('')}"/>`);
 
   // 九宫斜线
   for (let p = 0; p < 3; p++) {
@@ -96,8 +107,8 @@ export function renderStatic(board: Board, layout: Layout): string {
   for (const node of board.nodes) {
     if (node.terrain === 'plain') continue;
     const p = layout.pos[node.id];
-    const glyph = node.terrain === 'mountain' ? '⛰' : '≈';
-    out.push(`<text class="glyph glyph-${node.terrain}" x="${f3(p.x)}" y="${f3(p.y + 0.12)}">${glyph}</text>`);
+    if (node.terrain !== 'mountain') continue;
+    out.push(`<text class="glyph" x="${f3(p.x)}" y="${f3(p.y + 0.12)}">⛰</text>`);
   }
 
   // 势力名（底线外）与边境名（凹口处）
@@ -116,6 +127,9 @@ export function renderStatic(board: Board, layout: Layout): string {
     const notch = layout.project(p, -1.3, DEPTH);
     const name = FRONTIER_NAME[frontierKey(faction, FRAME_FACTION[leftOf(p)])];
     out.push(`<text class="frontier-label" x="${f3(notch.x)}" y="${f3(notch.y + 0.18)}">${name}</text>`);
+    // 河名写在河道靠右的一端（该方视角）
+    const river = layout.project(p, 6.45, RIVER_RANK + 0.62);
+    out.push(`<text class="river-label" x="${f3(river.x)}" y="${f3(river.y + 0.1)}">${RIVER_NAME[faction]}</text>`);
   }
   return out.join('');
 }
@@ -142,8 +156,7 @@ export function renderDynamic(board: Board, layout: Layout, state: GameState, hl
   // 上一步
   const last = state.lastAction;
   if (last) {
-    const nodes = last.type === 'move' ? [last.from, last.to] : [last.target];
-    for (const id of nodes) {
+    for (const id of [last.from, last.to]) {
       const p = pos[id];
       out.push(`<circle class="last-move" cx="${f3(p.x)}" cy="${f3(p.y)}" r="${PIECE_R + 0.07}"/>`);
     }
@@ -158,7 +171,6 @@ export function renderDynamic(board: Board, layout: Layout, state: GameState, hl
     const cls = ['piece'];
     if (piece.node === hl.selected) cls.push('selected');
     if (piece.kind === 'king' && checked.has(piece.owner)) cls.push('in-check');
-    if (hl.burnPreview.includes(piece.node)) cls.push('burning');
     out.push(`<g class="${cls.join(' ')}" transform="translate(${f3(p.x)} ${f3(p.y)})">`);
     out.push(`<circle class="piece-body" r="${PIECE_R}" stroke="${color}"/>`);
     out.push(`<circle class="piece-ring" r="${PIECE_R - 0.05}" stroke="${color}"/>`);
@@ -178,10 +190,6 @@ export function renderDynamic(board: Board, layout: Layout, state: GameState, hl
         ? `<circle class="target-capture" cx="${f3(p.x)}" cy="${f3(p.y)}" r="${PIECE_R + 0.06}"/>`
         : `<circle class="target" cx="${f3(p.x)}" cy="${f3(p.y)}" r="0.11"/>`,
     );
-  }
-  for (const id of hl.fireTargets) {
-    const p = pos[id];
-    out.push(`<circle class="target-fire" cx="${f3(p.x)}" cy="${f3(p.y)}" r="${PIECE_R + 0.07}"/>`);
   }
 
   // 点击区域
